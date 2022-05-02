@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang=ko>
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" type="image/x-icon" href="/images/favicon.ico">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script type="text/javascript" src="/js/common/common.js"></script>
+    <script type="text/javascript" src="/js/common/includeJs.js"></script>
+    <script type="text/javascript" src="/js/common/includeCss.js"></script>
+
+    <script type="text/javascript" src="/js/lib/toastui-editor-all.js"></script>
+    <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+
+    <style>
+        [v-cloak] {
+            display: none;
+        }
+    </style>
+
+    <script>
+        const { Editor } = toastui;
+        var documentReady = function () {
+            var vm = new Vue({
+                el: '#app',
+                components: {
+                    editor: httpVueLoader('common/component/toastUiEditor.vue'),
+                    viewer: httpVueLoader('common/component/toastUiViewer.vue'),
+                },
+                data: function () {
+                    return {
+                        // menu list
+                        menu: [],
+                        // hidden command
+                        stack: '',
+                        // dev manage mode
+                        manageMode: 'N',
+                        // filter text
+                        filterText: '',
+                        params: {
+                            // selected menu parameter
+                            now1: '',
+                            now2: '',
+                            now3: '',
+                            // for navigator
+                            nav1: '',
+                            nav2: '',
+                            nav3: '',
+                            // edit conf parameter :: Y > possible edit / N > impossible edit
+                            editYn: 'N',
+                            // add conf parameter :: each :: Y > edit Mode / N > text mode
+                            addYn1: '',
+                            addYn2: '',
+                            addYn3: '',
+                            // adding menu text parameter :: user input new menu text
+                            editMenu1: '',
+                            editMenu2: '',
+                            editMenu3: '',
+                        },
+                        // contents
+                        info: {
+                            title: '',
+                            contents: '',
+                            file_master_seq: '',
+                            uploadedFile: [],
+                            reg_dttm: '',
+                            reg_id: '',
+                            mod_dttm: '',
+                            mod_id: '',
+                        },
+                        componentKey: 0,
+                    }
+                },
+                created: function () {
+                    let vm = this;
+                    vm.init();
+                },
+                mounted: function () {
+                    let vm = this;
+                    window.onkeydown = (e) => {
+                        if (vm.stack.length > 9999) vm.stack = '';
+                        if (e.keyCode == 27) {
+                            if (vm.manageMode == 'Y') vm.manageMode = 'N';
+                        } else if (e.keyCode == 37 || e.keyCode == 38 || e.keyCode == 39 || e.keyCode == 40) {
+                            vm.stack += e.keyCode;
+                            if (vm.stack.indexOf('3840383840') >= 0) {
+                                if (vm.manageMode == 'N') vm.manageMode = 'Y';
+                            }
+                        }
+                    }
+                },
+                updated: function () {
+                },
+                distroyed: function () {
+                },
+                methods: {
+                    // 1depth & 2depth 
+                    init: function () {
+                        var vm = this;
+                        comm.post({
+                            url: "/data/init",
+                            params: {},
+                        }, function (data) {
+                            vm.menu = data.result.menu;
+                            vm.params.editMenu1 = '';
+                            vm.params.editMenu2 = '';
+                            vm.params.editMenu3 = '';
+                        });
+                    },
+                    add: function (type, upSeq, index1, index2) {
+                        var vm = this;
+                        switch (type) {
+                            case "1":
+                                vm.menu.push({ 'index_level': 1, 'seq': '', 'up_seq': upSeq, 'title': '', 'depth2': [] });
+                                break;
+                            case "2":
+                                vm.menu[index1].depth2.push({ 'index_level': 2, 'seq': '', 'up_seq': upSeq, 'title': '', 'depth3': [] });
+                                break;
+                            case "3":
+                                vm.menu[index1].depth2[index2].depth3.push({ 'index_level': 3, 'seq': '', 'up_seq': upSeq, 'title': '', 'contents': '' });
+                                break;
+                            default:
+                                break;
+                        }
+
+                    },
+                    insert: function (type, upSeq) {
+                        var vm = this;
+                        var title;
+                        switch (type) {
+                            case "1":
+                                title = vm.params.editMenu1;
+                                break;
+                            case "2":
+                                title = vm.params.editMenu2;
+                                break;
+                            case "3":
+                                title = vm.params.editMenu3;
+                                break;
+                            default:
+                                break;
+                        }
+                        comm.post({
+                            url: "/data/insert",
+                            params: {
+                                "type": type,
+                                "upSeq": upSeq,
+                                "title": title,
+                            },
+                        }, function (data) {
+                            vm.init();
+                        });
+                    },
+                    toggle: function (type, seq) {
+                        var vm = this;
+                        if (type == 1) {
+                            document.getElementById('menuLink' + seq).parentElement.classList.toggle('on');
+                            vm.params.now1 = seq;
+                        } else if (type == 2) {
+                            document.getElementById('menuLink' + seq).parentElement.classList.toggle('on');
+                            vm.params.now2 = seq;
+                        }
+                    },
+                    selected: function (type, menu1, menu2, menu3) {
+                        var vm = this;
+                        // 에딧 모드일때는 아무 동작 안하게끔 
+                        if (vm.params.editYn == 'Y') {
+                            alert("편집모드에서는 이동할 수 없습니다.");
+                            return false;
+                        }
+                        if (type == 3) document.getElementById('menuLink' + menu3).parentElement.classList.toggle('on');
+                        vm.params.now1 = menu1;
+                        vm.params.now2 = menu2;
+                        vm.params.now3 = menu3;
+                        vm.info.uploadedFile = "";
+                        // type == 1, 선택한 메뉴1의 첫번째 메뉴2 선택, 첫번째 메뉴 3 선택.
+                        // type == 2, 선택한 메뉴2의 첫번째 메뉴 3선택
+                        // type == 3, 선택한 메뉴3으로 이동
+                        comm.post({
+                            url: "/data/getContents",
+                            params: {
+                                "type": type,
+                                "menu1": vm.params.now1,
+                                "menu2": vm.params.now2,
+                                "menu3": vm.params.now3,
+                            },
+                        }, function (data) {
+                            var rs = data.result.contents;
+                            console.log("🚀 ~ file: index.html ~ line 190 ~ documentReady ~ rs", rs)
+                            vm.params.nav1 = '';
+                            vm.params.nav2 = '';
+                            vm.params.nav3 = '';
+                            if (rs == null) {
+                                vm.info.title = 'No Contents in here!';
+                                vm.info.contents = '아직 작성된 글이 없습니다!';
+                                vm.info.reg_dttm = '';
+                                vm.info.reg_id = '';
+                                vm.info.mod_id = '';
+                                vm.info.mod_dttm = '';
+                                vm.componentKey += 1;
+                            } else {
+                                vm.params.now2 = rs.up_seq;
+                                vm.params.now3 = rs.seq;
+                                vm.info = rs;
+                                vm.componentKey += 1;
+                            }
+                            vm.params.nav1 = document.getElementById('menu' + vm.params.now1).innerHTML;
+                            vm.params.nav2 = document.getElementById('menu' + vm.params.now2).innerHTML;
+                            vm.params.nav3 = document.getElementById('menu' + vm.params.now3).innerHTML;
+                        });
+                    },
+                    editMode: function (value, type) {
+                        if (value == 'Y') {
+                            if (type == 'new') {
+                                this.params.editYn = 'Y';
+                                this.info.title = '';
+                                this.info.contents = '';
+                                this.info.reg_dttm = '';
+                                this.info.reg_id = '';
+                                this.info.mod_dttm = '';
+                                this.info.mod_id = '';
+                                this.params.now3 = '';
+                                this.params.nav3 = '';
+                            } else {
+                                this.params.editYn = 'Y';
+                            }
+                        } else {
+                            this.params.editYn = 'N';
+                        }
+                        vm.componentKey += 1;
+                        return true;
+                    },
+                    del: function () {
+                        if (confirm("삭제하시겠습니까?")) {
+                            comm.post({
+                                url: "/data/delete",
+                                params: {
+                                    "seq": this.params.now3,
+                                },
+                            }, function (data) {
+                                alert("삭제하였습니다.");
+                                location.reload();
+                            });
+                        }
+                    },
+                    main: function () {
+                        location.href = "/";
+                    },
+                }
+            });
+        };
+    </script>
+</head>
+
+<body>
+    <div class="wrap" id="app" v-cloak>
+        <!-- header -->
+        <header>
+            <div class="header">
+                <h1 class="logo" @click="main()">Documents</h1>
+
+                <ul class="gnb">
+                    <li v-for="item1, index1 in menu"><a href="javascript:void(0)"
+                            @click="selected('1',item1.seq,'','')"
+                            :class="{'on':item1.seq == params.now1}">{{item1.title}}</a></li>
+                </ul>
+            </div>
+            <ul class="location">
+                <li>{{params.nav1 == '' ? 'main' : params.nav1}}</li>
+                <li v-if="params.nav2">{{params.nav2}}</li>
+                <li v-if="params.nav3">{{params.nav3}}</li>
+            </ul>
+        </header>
+        <!--//header-->
+
+        <!-- cont_wrap -->
+        <div class="cont_wrap">
+            <!--left_menu  -->
+            <div class="left_menu">
+                <!--search_wrap-->
+                <div class="search_wrap">
+                    <div class="search_box">
+                        <input type="text" placeholder="검색어를 입력하세요." v-model="filterText">
+                        <a href="#" class="search_btn" title="검색"></a>
+                    </div>
+                </div>
+                <!--//search_wrap-->
+                <ul class="lnb">
+                    <li v-for="item1, index1 in menu" class="depth1">
+                        <div v-if="item1.seq == ''">
+                            <input type="text" name="newMenu" value="" v-model="params.editMenu1" />
+                            <div class="btn_wrap inner">
+                                <a href="javascript:void(0)" class="btn01 col03" @click="insert('1',0)">저장</a>
+                            </div>
+                        </div>
+                        <a href="javascript:void(0)" @click="toggle(1,item1.seq)" v-bind:id="'menuLink'+item1.seq"
+                            :class="{'now': item1.seq == params.now1, 'is_sub': item1.depth2.length > 0 }"><span
+                                v-bind:id="'menu'+ item1.seq">{{item1.title}}</span></a>
+                        <ul class="depth2">
+                            <li v-for="item2,index2 in item1.depth2" class="on">
+                                <div v-if="item2.seq == ''">
+                                    <input type="text" name="newMenu" value="" v-model="params.editMenu2" />
+                                    <div class="btn_wrap inner">
+                                        <a href="javascript:void(0)" class="btn01 col03"
+                                            @click="insert('2',item2.up_seq)">저장</a>
+                                    </div>
+                                </div>
+                                <a href="javascript:void(0)" @click="selected('2',item1.seq,item2.seq,'')"
+                                    v-bind:id="'menuLink'+item2.seq"
+                                    :class="{'now': item2.seq == params.now2, 'is_sub': item2.depth3.length > 0 }"><span
+                                        v-bind:id="'menu'+ item2.seq">{{item2.title}}</span></a>
+                                <!-- 메뉴3 -->
+                                <ul class="depth3">
+                                    <li v-for="item3,index3 in item2.depth3">
+                                        <a href="javascript:void(0)"
+                                            @click="selected('3',item1.seq,item2.seq,item3.seq)"
+                                            v-if="item3.title.includes(filterText)" v-bind:id="'menuLink'+item3.seq"
+                                            :class="{'now': item3.seq == params.now3}"><span
+                                                v-bind:id="'menu'+ item3.seq">{{item3.title}}</span></a>
+                                    </li>
+                                </ul>
+                                <!-- 메뉴3 -->
+                            </li>
+                            <div class="btn_wrap" v-if="manageMode == 'Y'">
+                                <a href="javascript:void(0)" class="btn01 col02" @click="add('2', item1.seq, index1)"
+                                    v-if="params.now1 != ''">메뉴2 추가</a>
+                            </div>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="btn_wrap" v-if="manageMode == 'Y'">
+                    <a href="javascript:void(0)" class="btn01 col02" @click="add('1', 0)">메뉴1 추가</a>
+                </div>
+
+            </div>
+            <!-- //left_menu-->
+
+            <!-- contents -->
+            <div class="contents" v-if="params.editYn == 'N' && info.title == '' && info.contents == ''">
+                <div class="text_wrap">
+                    <h2 class="page_tit">Welcome To Documents Page !</h2>
+                </div>
+                <div class="cont_box">
+                    <p>Main Page Notice Contents</p>
+                    <p>Main Page Notice Contents</p>
+                    <p>Main Page Notice Contents</p>
+                    <p>Main Page Notice Contents</p>
+                    <p>Main Page Notice Contents</p>
+                    <p>Main Page Notice Contents</p>
+                    <p>Main Page Notice Contents</p>
+                    <p>Main Page Notice Contents</p>
+                </div>
+            </div>
+            <div class="contents" v-else-if="params.editYn == 'N' && params.now1 != ''">
+                <div class="text_wrap">
+                    <h2 class="page_tit">{{info.title}}</h2>
+                    <div class="page_author" style="text-align: right; margin-bottom: 10px;">
+                        <span>최초 작성일 : {{info.reg_id}} - {{info.reg_dttm}}</span>
+                        <br />
+                        <span>마지막 수정일 : {{info.mod_id}} - {{info.mod_dttm}}</span>
+                    </div>
+                </div>
+
+                <viewer id="" v-bind:info="info" :key="componentKey">
+                </viewer>
+                <div class="btn_wrap" v-if="manageMode == 'Y'">
+                    <a href="javascript:void(0)" class="btn01 col02" @click="editMode('Y','new')"
+                        v-if="params.editYn == 'N' && params.now1 != '' && params.now2 != ''">{{params.nav2}} 컨텐츠 추가</a>
+                    <a href="javascript:void(0)" class="btn01 col03" @click="editMode('Y','mod')"
+                        v-if="params.editYn == 'N' && params.now1 != '' && params.now2 != '' && params.now3 != ''">컨텐츠
+                        수정</a>
+                    <a href="javascript:void(0)" class="btn01 col01" @click="del()"
+                        v-if="params.editYn == 'N' && params.now1 != '' && params.now2 != '' && params.now3 != ''">컨텐츠
+                        삭제</a>
+                </div>
+            </div>
+            <div class="contents" v-else>
+                <editor v-bind:params="params" v-bind:info="info" v-on:cancel="editMode('N')" :key="componentKey">
+                </editor>
+            </div>
+            <!-- //contents -->
+        </div>
+        <!-- //cont_wrap -->
+
+        <!--footer-->
+        <footer>
+            <p>COPYRIGHT(C) 2022 chiptune93. ALL RIGHTS RESERVED</p>
+        </footer>
+        <!--//footer-->
+    </div>
+</body>
+
+</html>

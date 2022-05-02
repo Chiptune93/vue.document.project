@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dk.api.repo.ApiRepository">
+
+    <select id="list" parameterType="HashMap" resultType="HashMap">
+        select
+            t.*
+        from (
+            with recursive viewData(INDEX_LEVEL,SEQ,UP_SEQ,TITLE) as (
+                select 
+                    1           as INDEX_LEVEL
+                    ,seq        as SEQ
+                    ,up_seq     as UP_SEQ
+                    ,title      as TITLE
+                from   
+                    document_base
+                where
+                    1=1
+                    and up_seq = 0
+                union all
+                    select 
+                    INDEX_LEVEL + 1   as INDEX_LEVEL
+                    ,t1.seq        as SEQ
+                    ,t1.up_seq     as UP_SEQ
+                    ,t1.title      as TITLE
+                from   
+                    document_base t1, viewData t2
+                where
+                    1=1
+                    and t1.up_seq = t2.seq
+            )
+            select * from viewData
+        ) t
+        where
+            1=1
+            <choose>
+                <when test='type == "1"'>
+                    and t.up_seq = 0
+                    and t.index_level = 1
+                </when>
+                <when test='type == "2"'>
+                    and t.up_seq = #{seq}::numeric
+                    and t.index_level = 2
+                </when>
+                <when test='type == "3"'>
+                    and t.up_seq = #{seq}::numeric
+                    and t.index_level = 3
+                </when>
+            </choose>
+        order by
+            t.seq asc
+    </select>
+
+    <select id="info" parameterType="HashMap" resultType="HashMap">
+        with recursive viewData(INDEX_LEVEL,SEQ,UP_SEQ,TITLE) as (
+            select 
+                1                   as index_level
+                ,seq                as seq
+                ,up_seq             as up_seq
+                ,file_master_seq    as file_master_seq
+                ,title              as title
+            from   
+                document_base
+            where
+                1=1
+                and up_seq = 0
+            union all
+                select 
+                INDEX_LEVEL + 1         as index_level
+                ,t1.seq                 as seq
+                ,t1.up_seq              as up_seq
+                ,t1.file_master_seq     as file_master_seq
+                ,t1.title               as title
+            from   
+                document_base t1, viewData t2
+            where
+                1=1
+                and t1.up_seq = t2.seq
+        )
+        select
+            *
+        from
+            document_base db
+        where
+            1=1
+            <choose>
+                <when test='type == "1"'>
+                    and db.up_seq in (select seq from viewdata where index_level = 2 and up_seq = #{menu1}::numeric)
+                    and db.title is not null
+                </when>
+                <when test='type == "2"'>
+                    and db.seq in (select seq from viewdata where index_level = 3 and up_seq = #{menu2}::numeric)
+                    and db.title is not null
+                </when>
+                <when test='type == "3"'>
+                    and db.seq = (select seq from viewdata where index_level = 3 and seq = #{menu3}::numeric)
+                    and db.title is not null
+                </when>
+            </choose>
+        limit 1
+    </select>
+
+    <select id="insert" parameterType="HashMap" resultType="int">
+        insert into document_base (
+            seq
+            ,up_seq
+            ,file_master_seq
+            ,title
+            ,contents
+            ,reg_dttm
+            ,reg_id
+        ) values (
+            nextval('doc_seq')
+            ,#{upSeq}::numeric
+            ,#{fileMasterSeq}::numeric
+            ,#{title}
+            ,#{contents}
+            ,NOW()
+            ,coalesce(#{regId},'system')
+        )
+        RETURNING seq
+    </select>
+
+    <update id="update" parameterType="HashMap">
+        update 
+            document_base
+        set
+            title = #{title}
+            ,contents = #{contents}
+            ,mod_id = coalesce(#{modId},'system')
+            ,mod_dttm = NOW()
+            <if test='fileMasterSeq != null and fileMasterSeq != ""'>
+            ,file_master_seq = #{fileMasterSeq}::numeric
+            </if>
+        where
+            1=1
+            and seq = #{seq}::numeric
+    </update>
+
+    <delete id="delete" parameterType="HashMap">
+        delete from document_base
+        where
+            1=1
+            and seq = #{seq}::numeric
+    </delete>
+
+    <select id="getFileList" parameterType="HashMap" resultType="HashMap">
+        select
+            *
+        from
+            document_file
+        where
+            1=1
+            and file_master_seq = #{fileMasterSeq}
+    </select>
+
+</mapper>
