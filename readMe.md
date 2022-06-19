@@ -1,5 +1,3 @@
-# Personal Project for Chiptune93
-
 # Documents Page 
 
 ## First Download Check
