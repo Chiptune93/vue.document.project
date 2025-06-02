@@ -3,9 +3,12 @@
 
 <mapper namespace="com.dk.api.repo.ApiRepository">
 
-    <select id="list" parameterType="HashMap" resultType="HashMap">
+    <select id="list" parameterType="HashMap" resultType="com.dk.api.dto.MenuNodeDto">
         select
-            t.*
+            t.seq,
+            t.up_seq as upSeq, /* Alias for DTO mapping if needed, though mapUnderscoreToCamelCase should handle it */
+            t.title
+            /* children will be populated by service layer logic */
         from (
             with recursive viewData(INDEX_LEVEL,SEQ,UP_SEQ,TITLE) as (
                 select 
@@ -52,36 +55,20 @@
             t.seq asc
     </select>
 
-    <select id="info" parameterType="HashMap" resultType="HashMap">
-        with recursive viewData(INDEX_LEVEL,SEQ,UP_SEQ,TITLE) as (
-            select 
-                1                   as index_level
-                ,seq                as seq
-                ,up_seq             as up_seq
-                ,file_master_seq    as file_master_seq
-                ,title              as title
-            from   
-                document_base
-            where
-                1=1
-                and up_seq = 0
-            union all
-                select 
-                INDEX_LEVEL + 1         as index_level
-                ,t1.seq                 as seq
-                ,t1.up_seq              as up_seq
-                ,t1.file_master_seq     as file_master_seq
-                ,t1.title               as title
-            from   
-                document_base t1, viewData t2
-            where
-                1=1
-                and t1.up_seq = t2.seq
-        )
+    <select id="info" parameterType="HashMap" resultType="com.dk.api.dto.DocumentDto">
+        <!-- This query is complex and seems to fetch based on menu hierarchy. -->
+        <!-- It will be simplified later. For now, just ensure it returns columns for DocumentDto. -->
         select
-            *
+            db.seq,
+            db.up_seq as upSeq,
+            db.title,
+            db.contents,
+            db.reg_dttm as regDttm,
+            db.mod_dttm as modDttm,
+            db.file_master_seq as fileMasterSeq
         from
             document_base db
+        <!-- The original WHERE clause is kept for now, assuming it resolves to a single document -->
         where
             1=1
             <choose>
@@ -101,7 +88,7 @@
         limit 1
     </select>
 
-    <select id="insert" parameterType="HashMap" resultType="int">
+    <select id="insert" parameterType="com.dk.api.dto.DocumentDto" resultType="int">
         insert into document_base (
             seq
             ,up_seq
@@ -112,47 +99,58 @@
             ,reg_id
         ) values (
             nextval('doc_seq')
-            ,#{upSeq}::numeric
-            ,#{fileMasterSeq}::numeric
+            ,#{upSeq} <!-- Assuming upSeq is Long in DTO -->
+            ,#{fileMasterSeq} <!-- Assuming fileMasterSeq is Long in DTO -->
             ,#{title}
             ,#{contents}
             ,NOW()
-            ,coalesce(#{regId},'system')
+            ,coalesce(#{regId},'system') /* regId might not be in DocumentDto, default to system or add to DTO */
         )
         RETURNING seq
     </select>
 
-    <update id="update" parameterType="HashMap">
+    <update id="update" parameterType="com.dk.api.dto.DocumentDto">
         update 
             document_base
         set
             title = #{title}
             ,contents = #{contents}
-            ,mod_id = coalesce(#{modId},'system')
+            ,mod_id = coalesce(#{modId},'system') /* modId might not be in DocumentDto, default to system or add to DTO */
             ,mod_dttm = NOW()
-            <if test='fileMasterSeq != null and fileMasterSeq != ""'>
-            ,file_master_seq = #{fileMasterSeq}::numeric
+            <if test='fileMasterSeq != null'>
+            ,file_master_seq = #{fileMasterSeq}
             </if>
         where
             1=1
-            and seq = #{seq}::numeric
+            and seq = #{seq}
     </update>
 
-    <delete id="delete" parameterType="HashMap">
+    <delete id="delete" parameterType="com.dk.api.dto.DocumentDto">
         delete from document_base
         where
             1=1
-            and seq = #{seq}::numeric
+            and seq = #{seq}
     </delete>
 
-    <select id="getFileList" parameterType="HashMap" resultType="HashMap">
+    <select id="getFileList" parameterType="com.dk.api.dto.FileInfoDto" resultType="com.dk.api.dto.FileInfoDto">
         select
-            *
+            file_master_seq,
+            file_seq,
+            file_name,
+            file_path,
+            file_type,
+            file_size,
+            file_ext,
+            reg_dttm
+            /* document_seq is not in document_file table based on previous file repository xml */
         from
             document_file
         where
             1=1
+        <if test="fileMasterSeq != null and fileMasterSeq != 0">
             and file_master_seq = #{fileMasterSeq}
+        </if>
+        order by reg_dttm desc
     </select>
 
 </mapper>

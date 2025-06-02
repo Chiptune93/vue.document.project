@@ -1,19 +1,19 @@
 package com.dk.api.repo;
 
-import java.util.HashMap;
+import com.dk.api.dto.FileInfoDto;
+import java.util.HashMap; // Keep for parameterMap in fileList if not changing yet
 import java.util.List;
-
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface FileRepository {
-    List<HashMap<String, String>> fileList(HashMap<String, String> parameterMap);
+    List<FileInfoDto> fileList(FileInfoDto fileInfoDto);
 
     int getMasterSeq();
 
-    int insertFile(HashMap<String, String> parameterMap);
+    int insertFile(FileInfoDto fileInfoDto);
 
     int deleteFile(int fileSeq);
 
-    HashMap<String, String> info(int fileSeq);
+    FileInfoDto info(int fileSeq);
 }

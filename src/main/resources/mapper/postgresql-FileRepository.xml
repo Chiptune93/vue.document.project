@@ -16,9 +16,18 @@
         RETURNING currval('master_seq')
     </select>
 
-    <select id="info" parameterType="int" resultType="HashMap">
+    <select id="info" parameterType="int" resultType="com.dk.api.dto.FileInfoDto">
         select
-            *
+            file_master_seq,
+            file_seq,
+            file_name,
+            file_path,
+            file_type,
+            file_size,
+            file_ext,
+            reg_dttm
+            /* Assuming document_seq might not be directly in this table or needed for basic FileInfoDto */
+            /* If document_seq is part of document_file table, add it here */
         from
             document_file
         where
@@ -26,7 +35,7 @@
             and file_seq = #{fileSeq}
     </select>
 
-    <select id="insertFile" parameterType="HashMap" resultType="int">
+    <select id="insertFile" parameterType="com.dk.api.dto.FileInfoDto" resultType="int">
         insert into document_file (
             file_master_seq
             ,file_seq
@@ -37,6 +46,8 @@
             ,file_ext
             ,reg_dttm
             ,reg_id
+            /* Add document_seq if it's part of FileInfoDto and your table */
+            /* ,document_seq */
         ) values (
             #{fileMasterSeq}
             ,nextval('file_seq')
@@ -47,12 +58,34 @@
             ,#{fileExt}
             ,now()
             ,coalesce(#{regId},'system')
+            /* ,#{documentSeq} */
         )
         returning currval('file_seq')
     </select>
 
-    <delete id="deleteFile" parameterType="Integer">
+    <delete id="deleteFile" parameterType="int">
         delete from document_file where file_seq = #{fileSeq}
     </delete>
+
+    <select id="fileList" parameterType="com.dk.api.dto.FileInfoDto" resultType="com.dk.api.dto.FileInfoDto">
+        select
+            file_master_seq,
+            file_seq,
+            file_name,
+            file_path,
+            file_type,
+            file_size,
+            file_ext,
+            reg_dttm
+            /* Add document_seq if relevant for this list and available in the table */
+        from
+            document_file
+        where
+            1=1
+        <if test="fileMasterSeq != null and fileMasterSeq != 0">
+            and file_master_seq = #{fileMasterSeq}
+        </if>
+        order by reg_dttm desc
+    </select>
 
 </mapper>

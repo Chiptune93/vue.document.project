@@ -1,23 +1,26 @@
 package com.dk.api.repo;
 
-import java.util.HashMap;
+import com.dk.api.dto.DocumentDto;
+import com.dk.api.dto.FileInfoDto;
+import com.dk.api.dto.MenuNodeDto;
+import java.util.HashMap; // Keep for list and info parameters for now
 import java.util.List;
-
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ApiRepository {
 
-    public List<HashMap> list(HashMap paramMap);
+    public List<MenuNodeDto> list(HashMap paramMap); // paramMap kept for now
 
-    public List<HashMap> getFileList(HashMap paramMap);
+    public List<FileInfoDto> getFileList(FileInfoDto fileInfoDto); // Changed paramMap to FileInfoDto
 
-    public HashMap info(HashMap paramMap);
+    public DocumentDto info(HashMap paramMap); // paramMap kept for now
 
-    public int insert(HashMap paramMap);
+    public int insert(DocumentDto documentDto);
 
-    public int update(HashMap paramMap);
+    public int update(DocumentDto documentDto);
 
-    public int delete(HashMap paramMap);
+    public int delete(DocumentDto documentDto);
 
+    public List<MenuNodeDto> getAllMenuNodes(); // New method for fetching all nodes
 }

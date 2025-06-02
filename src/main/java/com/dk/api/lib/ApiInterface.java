@@ -1,16 +1,18 @@
 package com.dk.api.lib;
 
-import java.util.HashMap;
+import com.dk.api.dto.DocumentDto;
+import com.dk.api.dto.MenuNodeDto;
+import java.util.HashMap; // Kept for list and info as per ApiService
 import java.util.List;
 
 public interface ApiInterface {
 
-    List<HashMap> list(HashMap paramMap);
+    List<MenuNodeDto> list(HashMap paramMap);
 
-    HashMap info(HashMap paramMap);
+    DocumentDto info(HashMap paramMap);
 
-    int insert(HashMap paramMap);
+    int insert(DocumentDto documentDto); // Changed from HashMap to DocumentDto
 
-    int delete(HashMap paramMap);
+    int delete(DocumentDto documentDto); // Changed from HashMap to DocumentDto
 
 }
